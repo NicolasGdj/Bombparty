@@ -1,0 +1,61 @@
+<%- include('header'); -%>
+
+<h1 id="title" class="ui header white">Bombparty</h1>
+<%if (channels.length !== 0) {%>
+<div class="ui raised very padded text container segment">
+    <h2 class="ui header">Salons de jeux</h2>
+    <div class="ui middle aligned divided list">
+        <%channels.forEach((channel) => { %>
+        <div class="item">
+            <div class="right floated content">
+                <a class="ui button" href="/play/<%=channel.name%>/">Rejoindre</a>
+            </div>
+            <img class="ui avatar image mini" src="/assets/images/players/<%=channel.design%>.png">
+            <div class="content">
+                <%=channel.name%>
+                <div class="ui blue label" style="margin-left: 10px">
+                    <%=channel.playercount%> / <%=channel.maxplayers%>
+                </div>
+            </div>
+        </div>
+        <%});%>
+
+    </div>
+</div>
+<%}%>
+<div class="ui raised very padded text container segment">
+    <h2 class="ui header">Créer un nouveau salon ?</h2>
+
+    <div id="error-message" class="ui negative message transition" style="display: none">
+        <i class="close icon" onclick="$('#error-message').hide()"></i>
+        <div class="header">
+        </div>
+        <p class="sub"></p>
+    </div>
+
+    <div class="ui action input" style="width:100%">
+        <input id="create-input" type="text" placeholder="Nom du salon">
+        <button id="create-button" class="ui button">Créer</button>
+    </div>
+</div>
+
+<script>
+    $(document).ready(() => {
+        let socket = io();
+        $("#create-button").on('click', () => {
+           socket.emit('try create', {channelName: $("#create-input").val()});
+        });
+
+        socket.on('try create', (data) => {
+           if(data.code === 200){
+               $(location).attr("href", "/play/"+data.channelName+"/");
+           } else {
+               $('#error-message .header').text(data.message);
+               $('#error-message .sub').text(data.submessage);
+               $('#error-message').show()
+           }
+        });
+    });
+</script>
+
+<%- include('footer'); -%>

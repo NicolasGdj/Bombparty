@@ -1,0 +1,197 @@
+html { height:100%; }
+
+body{
+    background-color: #74b9ff;
+    overflow: hidden;
+}
+
+#join-button{
+    color: white;
+    background-color: #0984e3;
+}
+
+.white{
+    color: white!important;
+}
+
+#title{
+    text-align: center;
+    margin: 30px;
+    font-size: 60px;
+}
+
+.ui.button{
+    margin-top: 10px;
+}
+
+#game{
+    max-width: calc(100% - 250px);
+}
+
+#chat{
+    background-color: #0984e3;
+    min-width: 250px;
+}
+
+.ui.main.container{
+    height: 100%;
+    width: 100%;
+    margin: 0!important;
+    padding: 0!important;;
+}
+
+#main-grid{
+    height: 100%;
+}
+
+#chat-input{
+    padding-left: 0px;
+    padding-right: 0px;
+    text-align: center;
+    background-color: #0984e3;
+    border: none;
+    border-radius: 0px;
+    border-bottom: 3px solid #74b9ff ;
+    color: white;
+    font-size: 15px;
+}
+
+.mini{
+    width: 40px!important;
+}
+
+#chat-content{
+    text-align: justify;
+    margin-left: 0px;
+    margin-top: 10px;
+    margin-right: 0px;
+    position: relative;
+    padding-right: 5px;
+    height: calc(100vh - 70px);
+    overflow-y: scroll;
+    color: white;
+}
+
+.private-message{
+    color: #b2bec3;
+    font-weight: bold;
+}
+
+#chat-textbox{
+    padding-left: 0px;
+    padding-right: 20px;
+    margin-left: 10px;
+    height: 50px;
+}
+
+#game-input{
+    padding-left: 10px;
+    padding-right: 10px;
+    text-align: center;
+    background-color: #74b9ff;
+    border: none;
+    border-radius: 0px;
+    border-bottom: 3px solid #0984e3;
+    color: white;
+    font-size: 20px;
+}
+
+#game-row{
+    margin-left: 10px;
+    margin-top: 50px;
+    height: calc(100% - 64px - 50px);
+}
+
+#game-textbox{
+    padding-left: 20px;
+    padding-right: 20px;
+    margin-left: 10px;
+    height: 50px;
+}
+
+#join-menu{
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    width: 100%;
+    height: 100%;
+    background-color: #74b9ff;
+    display: block;
+    z-index: 10;
+}
+
+#classement{
+    top: 20px;
+    left: 20px;
+    position: absolute;
+    width: auto;
+    max-height: 200px;
+    overflow-y: scroll;
+    background-color: #0984e3;
+    color: white;
+    z-index: 2;
+    cursor: pointer;
+
+}
+th{
+    padding: 5px;
+}
+
+#classement-hamburger{
+    width: 50px;
+    height: 50px;
+    top: 20px;
+    left: 20px;
+    position: absolute;
+    cursor: pointer;
+    z-index: 2;
+}
+
+#votepass{
+    position: absolute;
+    bottom: 100px;
+    left: 20px;
+    width: auto;
+    padding: 10px;
+    background-color: #0984e3;
+    color: white;
+    cursor: pointer;
+    z-index: 3;
+    border: none;
+}
+
+#login{
+    width: 33%;
+    height: 100%;
+    margin-top: auto!important;
+    margin-bottom: auto!important;
+    margin-right: auto;
+    margin-left: auto;
+}
+
+p span{
+    font-weight: bold;
+}
+
+canvas{
+    top: 0;
+    left: 0;
+    height: 100%;
+    position: absolute;
+    width: 70%;
+}
+
+.player{
+    width: 70px;
+    height: 70px;
+    cursor: pointer;
+    margin: 10px;
+}
+
+#players{
+    padding: 10px;
+}
+
+.player.selected{
+    border: solid #0984e3 2px;
+}

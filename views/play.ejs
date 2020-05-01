@@ -1,0 +1,507 @@
+<%- include('header'); -%>
+
+<div id="join-menu">
+
+    <div class="ui middle aligned center aligned grid" id="login">
+        <div class="column">
+
+            <h1 class="ui header white">
+                Rejoindre le salon <%=salon%>
+            </h1>
+            <div class="ui error message" id="join-result"></div>
+
+            <form class="ui large form">
+                <div class="ui  segment">
+                    <div class="field">
+                        <div class="ui left icon input">
+                            <i class="user icon"></i>
+                            <input type="text" id="username" placeholder="Pseudonyme">
+                        </div>
+                    </div>
+                    <div class="ui fluid large teal submit button" id="join-button">Rejoindre</div>
+                </div>
+
+            </form>
+
+            <div id="players">
+                <div id="first-row">
+                    <img class="player selected" id="player-walter" name="walter"  onclick="$.changeDesign('walter')" src="/assets/images/players/walter.png">
+                    <img class="player" id="player-sophie" name="sophie" onclick="$.changeDesign('sophie')" src="/assets/images/players/sophie.png">
+                    <img class="player" id="player-robert" name="robert" onclick="$.changeDesign('robert')" src="/assets/images/players/robert.png">
+                </div>
+                <div id="second-row">
+                    <img class="player" id="player-bob" name="bob"  onclick="$.changeDesign('bob')" src="/assets/images/players/bob.png">
+                    <img class="player" id="player-edouardo" name="edouardo" onclick="$.changeDesign('edouardo')" src="/assets/images/players/edouardo.png">
+                    <img class="player" id="player-alix" name="alix" onclick="$.changeDesign('alix')" src="/assets/images/players/alix.png">
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div class="ui grid" id="main-grid">
+    <div class="thirteen wide column" id="game">
+        <div id="game-row">
+
+            <img id="classement-hamburger" src="/assets/images/rank.png"/>
+            <table id="classement" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Pseudonyme</th>
+                        <th>Score</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                </tbody>
+            </table>
+            <button id="votepass" style="display: none;">Voter pour passer : 0/1</button>
+
+            <canvas id="game-canvas">
+                <img id="bomb" src="/assets/images/bomb.png">
+                <img id="explosions_sprite" src="/assets/images/explosions_sprite.png">
+                <img id="heart" src="/assets/images/heart.png">
+                <img id="crown" src="/assets/images/crown.png">
+                <img id="player-death-walter" src="/assets/images/players/walter_death.png">
+                <img id="player-death-sophie" src="/assets/images/players/sophie_death.png">
+                <img id="player-death-alix" src="/assets/images/players/alix_death.png">
+                <img id="player-death-robert" src="/assets/images/players/robert_death.png">
+                <img id="player-death-edouardo" src="/assets/images/players/edouardo_death.png">
+                <img id="player-death-bob" src="/assets/images/players/bob_death.png">
+            </canvas>
+        </div>
+        <div  id="game-textbox">
+            <div class="ui huge fluid  input">
+                <input type="text" id="game-input" placeholder="">
+            </div>
+        </div>
+    </div>
+    <div class="three wide column" id="chat">
+        <div id="chat-content"></div>
+        <div  id="chat-textbox">
+            <div class="ui huge fluid  input">
+                <input type="text" id="chat-input" placeholder="">
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    let game;
+
+    $(document).ready(() => {
+        let socket = io();
+        let design = "walter";
+
+        $.sortScore = (userA,userB) => {
+            if(userA.score === userB.score)
+                return 0;
+            return userA.score > userB.score ? -1 : 1;
+        }
+
+        $.updateClassement = () => {
+            game.players.sort($.sortScore);
+            let classement = $("#classement tbody");
+            classement.empty();
+            for(let i = 1; i <= game.players.length; ++i){
+                classement.append("<tr><td>"+i+"</td><td>"+game.players[i-1].name+"</td><td>"+game.players[i-1].score+"</td></tr>");
+            }
+        }
+        $("#classement").on('click', () => {
+            $("#classement").hide();
+            $("#classement-hamburger").show();
+        });
+        $("#classement-hamburger").on('click', () => {
+            $("#classement").show();
+            $("#classement-hamburger").hide();
+        });
+
+        $.changeDesign = (name) => {
+            $(".selected").removeClass("selected");
+            $("#player-"+name).addClass("selected");
+            design = name;
+        }
+
+        $('#game-input').on('input', () => {
+            $("#game-input").val($("#game-input").val().toUpperCase());
+            if(game !== undefined) {
+                let cible = game.inGame[game.index];
+                if (game.state === 'running' && cible !== undefined && game.user === cible.name) {
+                    socket.emit('change word', {word: $("#game-input").val()});
+                }
+            }
+        });
+
+        $('#game-input').keypress((event) => {
+            var keycode = (event.keyCode ? event.keyCode : event.which);
+            if(keycode == '13'){
+                if(game !== undefined) {
+                    let cible = game.inGame[game.index];
+                    if (game.state === 'running' && cible !== undefined && game.user === cible.name) {
+                        socket.emit('answer word', {word: $("#game-input").val()});
+                    }
+
+                }
+                $("#game-input").val("");
+                return false;
+            }
+        });
+
+        let sounds = {
+            fail: new Audio("/assets/sounds/fail.wav"),
+            start_in: new Audio("/assets/sounds/start_in.wav"),
+            sucess: new Audio("/assets/sounds/sucess.wav"),
+            votepass: new Audio("/assets/sounds/votepass.wav"),
+            your_turn: new Audio("/assets/sounds/your_turn.wav"),
+            explosion: new Audio("/assets/sounds/explosion.wav"),
+            tick: new Audio("/assets/sounds/tick.wav"),
+        };
+
+        let canvas_data = {
+            item : document.getElementById("game-canvas"),
+            jItem : $("#game-canvas"),
+            ctx : document.getElementById("game-canvas").getContext("2d"),
+            bomb : {
+                item: document.getElementById("bomb"),
+                width: 150,
+                height: 150,
+                rotation: 10,
+                size: 1,
+                defaultSize: 1,
+                growthSize: 1.4,
+                sizeStep: 0.01,
+            },
+            crown : {
+                item: document.getElementById("crown"),
+                size: 25,
+            },
+            heart : {
+                item: document.getElementById("heart"),
+                size: 25,
+                padding: 30,
+            },
+            explosions: {
+                item: document.getElementById("explosions_sprite"),
+                width: 555/3,
+                height: 555/3,
+                sprites: [
+                    {x: 0, y: 0},
+                    {x: 1*555/3+15, y: 0},
+                    {x: 2*555/3+30, y: 0},
+                    {x: 0, y: 1*555/3},
+                    {x: 1*555/3+15, y: 1*555/3},
+                    {x: 2*555/3+30, y: 1*555/3},
+                    {x: 0, y: 2*555/3},
+                    {x: 1*555/3+15, y: 2*555/3},
+                    {x: 2*555/3+30, y: 2*555/3},
+                ]
+            },
+            players:{
+                walter: {
+                    color: '#22a6b3',
+                    item: document.getElementById("player-walter"),
+                    death_item: document.getElementById("player-death-walter")
+                },
+                sophie: {
+                    color: '#eb4d4b',
+                    item: document.getElementById("player-sophie"),
+                    death_item: document.getElementById("player-death-sophie")
+                },
+                alix: {
+                    color: '#c44569',
+                    item: document.getElementById("player-alix"),
+                    death_item: document.getElementById("player-death-alix")
+                },
+                bob: {
+                    color: '#f9ca24',
+                    item: document.getElementById("player-bob"),
+                    death_item: document.getElementById("player-death-bob")
+                },
+                edouardo: {
+                    color: '#30336b',
+                    item: document.getElementById("player-edouardo"),
+                    death_item: document.getElementById("player-death-edouardo")
+                },
+                robert: {
+                    color: '#badc58',
+                    item: document.getElementById("player-robert"),
+                    death_item: document.getElementById("player-death-robert")
+                }
+            }
+        };
+
+        let gamerow = $("#game-row");
+        $.resizeCanvas = () => {
+
+            let canvas = canvas_data.jItem;
+            canvas.width(gamerow.width());
+            canvas.attr('width', canvas.width());
+            canvas.attr('height', canvas.height() );
+        }
+        $.resizeCanvas();
+
+        let resizeCanvasTimeoutId;
+        $(window).resize(() => {
+            clearTimeout(resizeCanvasTimeoutId);
+            resizeCanvasTimeoutId = setTimeout($.resizeCanvas, 200);
+        });
+
+        let ticks = 0;
+        setInterval(() => {
+
+            ++ticks;
+
+            let canvas = canvas_data.item;
+            let ctx = canvas_data.ctx;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.textBaseline = "middle";
+            ctx.textAlign = 'center';
+
+            if(game === undefined)
+                return;
+
+            let bomb_info = canvas_data.bomb;
+
+            let radius = 250;
+            let size = 60;
+            let cible = game.inGame[game.index];
+
+            for(let i in game.inGame){
+                ctx.textAlign = 'center';
+
+                let player = game.inGame[i];
+                player.relative =i*360/game.inGame.length ;
+                let x = canvas.width/2 + radius * Math.cos(2*Math.PI/360 * (player.relative- 45));
+                let y = canvas.height/2 + radius * Math.sin(2*Math.PI/360 * (player.relative- 45));
+
+                let player_design =canvas_data.players[player.design];
+                ctx.drawImage(((player.live <= 0 && game.state === 'running') ? player_design.death_item : player_design.item), x - size,  y - size, 2*size, 2*size);
+
+                if(game.state === 'running')
+                    if(player.live !== 0) {
+                        let pos_heart = x -  (3* (canvas_data.heart.size / 2)) / 2;
+                        for (let heart = 0; heart < player.live; ++heart, pos_heart += canvas_data.heart.padding) {
+                            ctx.drawImage(canvas_data.heart.item  , pos_heart - canvas_data.heart.size / 2 + 3, y - 90, canvas_data.heart.size, canvas_data.heart.size)
+                        }
+                    }
+                ctx.font = "15px Arial"
+                ctx.fontWeight = "normal"
+                ctx.fillStyle = "white";
+                ctx.fillText(player.name, x, y + 70)
+                if(game.lastWinner === player.name)
+                  ctx.drawImage(canvas_data.crown.item, x - canvas_data.crown.size/2,  y -50 - canvas_data.crown.size/2, canvas_data.crown.size, canvas_data.crown.size);
+
+                if(player.explosion !== undefined && player.explosion !== 0){
+                    let sprite = canvas_data.explosions.sprites[player.explosion-1];
+                    let sprite_width = 555/3*1.5;
+                    let sprite_height = 555/3*1.5;
+                    ctx.drawImage(canvas_data.explosions.item, sprite.x, sprite.y, canvas_data.explosions.width, canvas_data.explosions.height, x - sprite_width/2+7, y - sprite_height/2-20, sprite_width, sprite_height);
+
+                    if(ticks%11 === 0)
+                        if(++player.explosion === canvas_data.explosions.sprites.length)
+                            player.explosion = 0;
+
+                }
+
+                if(game.state === 'running') {
+                    ctx.font = "20px Arial"
+                    ctx.fontWeight = "bold"
+                    ctx.fillStyle = "white";
+
+                    if (cible != undefined && cible == player && player.word.includes(game.sequence)) {
+                        ctx.textAlign = 'left';
+                        let word_width = ctx.measureText(player.word).width;
+                        let first_part = player.word.slice(0, player.word.search(game.sequence));
+                        let second_part = player.word.slice(player.word.search(game.sequence) + game.sequence.length);
+                        ctx.fillText(first_part, x - word_width/2, y + 90);
+                        ctx.fillStyle = "#0984e3";
+                        ctx.fillText(game.sequence, x - word_width/2 + ctx.measureText(first_part).width, y + 90);
+                        ctx.fillStyle = "white";
+                        ctx.fillText(second_part, x - word_width/2 + ctx.measureText(first_part).width + ctx.measureText(game.sequence).width, y + 90);
+                    } else {
+                        ctx.fillText(player.word, x, y + 90)
+                    }
+                }
+            }
+            ctx.textAlign = 'center';
+
+            let speed = 5;
+            bomb_info.rotation %= 360;
+            if(cible !== undefined)
+            if(bomb_info.rotation != cible.relative) {
+                if(Math.abs(bomb_info.rotation - cible.relative) < speed)
+                    bomb_info.rotation = cible.relative;
+                else
+                    bomb_info.rotation += speed;
+            }
+
+            if(bomb_info.size > bomb_info.defaultSize){
+                bomb_info.size-=bomb_info.sizeStep;
+            }
+
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height/2)
+            ctx.rotate(bomb_info.rotation*Math.PI/180);
+            let bomb_width = bomb_info.width * bomb_info.size;
+            let bomb_height = bomb_info.height * bomb_info.size;
+            ctx.drawImage(bomb_info.item, - bomb_width / 2,  - bomb_height/2, bomb_width, bomb_height)
+            ctx.restore();
+
+
+
+
+            ctx.font = "30px Arial";
+            ctx.fontWeight = "normal";
+            ctx.fillStyle = "white";
+            if(game.state === 'waiting')
+                ctx.fillText("En attente de joueurs...", canvas.width / 2, canvas.height/2 + 90);
+            else if(game.state === 'launching') {
+                if (game.lastWinner !== '')
+                    ctx.fillText("Victoire de " + game.lastWinner, canvas.width / 2, canvas.height / 2 + 70);
+                ctx.fillText("Début dans " + game.timer + " seconde(s)", canvas.width / 2, canvas.height / 2 + 90 + (game.lastWinner === '' ? 0 : 10));
+            }else{
+                ctx.fillText(game.sequence.toUpperCase(), canvas.width / 2, canvas.height/2 + 100);
+
+                ctx.font = "60px Arial";
+                ctx.fontWeight = "bold";
+                ctx.fillStyle = "red";
+                ctx.fillText(game.timer, canvas.width / 2+2, canvas.height/2+2);
+                ctx.fillStyle = "orange";
+                ctx.fillText(game.timer, canvas.width / 2, canvas.height/2);
+            }
+        }, 2);
+
+        $("#join-result").hide();
+
+        $.tryConnect = (username) => {
+            console.log("Connexion au serveur...")
+            socket.emit('play', {id: ',', name: username, design: design});
+        }
+
+
+        $('#username').keypress((event) => {
+            var keycode = (event.keyCode ? event.keyCode : event.which);
+            if(keycode == '13'){
+                $.tryConnect($('#username').val())
+                return false;
+
+            }
+        });
+        $('#join-button').on('click', () => $.tryConnect($('#username').val()));
+
+        $('#chat-input').keypress((event) => {
+            var keycode = (event.keyCode ? event.keyCode : event.which);
+            if(keycode == '13'){
+                socket.emit('chat message', {message: $('#chat-input').val()});
+                $('#chat-input').val("");
+                return false;
+
+            }
+        });
+
+        socket.on('play', (result) => {
+            $("#join-result").hide();
+
+            if(result.code === 200){
+                console.log("Connexion réussie. ("  + result.message + ")");
+                $("#join-menu").hide();
+            }else{
+                $("#join-result").show();
+
+                $("#join-result").text(result.message);
+                console.log("Connexion échoué. ("  + result.message + ")");
+            }
+        });
+
+        socket.on('chat message', (data) => {
+            if(data.sender === undefined || data.sender === ''){
+                $("#chat-content").append("<p class=\"private-message\">" + data.message + "</p>");
+            }else {
+                $("#chat-content").append("<p><span style=\"color:"+canvas_data.players[data.design].color+"\">" + data.sender + ": </span>" + data.message + "</p>");
+            }
+            $('#chat-content').scrollTop($('#chat-content')[0].scrollHeight);
+
+        });
+
+        $.updateVotePass = (current, max) => {
+            $("#votepass").text("Voter pour passer : " + current + "/" + max);
+        }
+
+        socket.on('votepass', (data) => {
+            $.updateVotePass(data.current, data.max);
+        });
+
+        $('#votepass').on('click', () => {
+           socket.emit('votepass', {})
+        });
+
+        socket.on('change word', (data) => {
+            if(game !== undefined){
+                for(let user of game.inGame){
+                    if(user.name === data.user){
+                        user.word = data.word;
+                        break;
+                    }
+                }
+            }
+        });
+
+        function playSound(sound){
+            sound.pause();
+            sound.volume = 0.4;
+            sound.currentTime = 0;
+            sound.play();
+        }
+
+        socket.on('play sound', (data) => {
+           if(sounds !== undefined){
+               playSound(sounds[data.sound]);
+           }
+        });
+
+        socket.on('update', (data) => {
+            if(game !== undefined){
+                if(game.index != data.index) {
+                    $("#game-input").val("");
+                    $.updateClassement();
+                }
+                if(game.state != data.state) {
+                    $.updateClassement();
+                    if (data.state === 'running')
+                        $("#votepass").show();
+                    else
+                        $("#votepass").hide();
+                }
+                for(let user of game.inGame){
+                    for(let u of data.inGame){
+                        if(user.name === u.name){
+                            if(user.explosion === 1) {
+                                playSound(sounds.explosion);
+                                u.explosion = 1;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            game = data;
+            let cible = game.inGame[game.index];
+            if(game.state === 'running' && cible !== undefined && game.user === cible.name) {
+                $("#game-input").show();
+                $("#game-input").focus();
+            }else{
+                $("#game-input").hide();
+            }
+                if(game.state === 'running'){
+                    playSound(sounds.tick);
+                    canvas_data.bomb.size = 1.5;
+            }
+        });
+
+
+    });
+</script>
+<%- include('footer'); -%>
