@@ -1,18 +1,5 @@
 module.exports = class Channel {
 
-/*
-    [X] Sauter les gens morts.
-    [X] Rapprocher les joueurs. (Enfonction des ecrans)
-    [X] Vider la barre quand ça deviens notre tour.
-    [X] Ajouter courone pour le gagnant
-    [X] Filtrer le chat (Min 1 characters)
-    [X] Faire un affichage de victoire.
-    [X] Colorer les lettres du mot utilisé
-    [X] Compteur de point
-    [X] Classement (Premier = 3pt, Deuxieme= 2pt, 3eme = 1pt)
-    [X]
-
- */
 
     constructor(name, owner){
         this.users = [];
