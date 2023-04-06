@@ -1,14 +1,5 @@
 'use strict';
 
-/*
-    TODO LIST:
-    [X] Modifier le systeme de temps
-    [X] Auto focus chat
-    [X] Envoyer un paquet directement on change
-    [X] Empecher d'utiliser plusiers fois les m�mes mots
-
- */
-
 let express = require('express');
 let app = express();
 let fs = require('fs');
